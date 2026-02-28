@@ -1,0 +1,26 @@
+# ============================================================
+# Domino Data Lab – Multilingual OCR + MRZ Processing
+# Python 3.9+  |  CPU-only  |  Tested on Domino 5.x
+# ============================================================
+
+# --- Core OCR ---
+paddleocr==2.8.1
+paddlepaddle==2.6.1          # CPU-only wheel
+
+# --- High-Performance Inference (ONNX) ---
+onnxruntime==1.19.0          # CPU build – do NOT install onnxruntime-gpu
+
+# --- MRZ Parsing ---
+omnimrz==0.1.6
+
+# --- Image Processing ---
+opencv-python-headless==4.10.0.84   # headless: no GUI dependencies
+Pillow==10.4.0
+
+# --- Data / Output ---
+numpy==1.26.4
+pandas==2.2.2
+openpyxl==3.1.5
+
+# --- Utilities ---
+tqdm==4.66.5
