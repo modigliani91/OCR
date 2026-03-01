@@ -1,0 +1,17 @@
+from paddleocr import PaddleOCR
+
+def _make_engine(lang: str) -> PaddleOCR:
+    return PaddleOCR(
+        lang=lang,
+        use_angle_cls=False,
+        use_gpu=False,
+        enable_hpi=True,
+        cpu_threads=CPU_THREADS,
+        ocr_version='PP-OCRv4',
+        show_log=False,
+    )
+
+ocr_ar    = _make_engine(LANG_ARABIC)   # handles Arabic text
+ocr_latin = _make_engine(LANG_LATIN)    # handles French / English
+
+log.info('OCR engines ready  ar + fr/en  threads=%d', CPU_THREADS)
