@@ -1,0 +1,252 @@
+================================================================================
+  MULTILINGUAL OCR + MRZ PARSER — DOMINO DATA LAB
+  STEP-BY-STEP SETUP INSTRUCTIONS
+================================================================================
+
+WHAT YOU NEED BEFORE STARTING
+-------------------------------
+  - Your laptop (Windows/Mac/Linux) with internet access
+  - Access to your Domino Data Lab workspace
+  - The file: multilingual_doc_ocr.ipynb  (included in this package)
+
+
+================================================================================
+STEP 1 — DOWNLOAD THE OCR MODELS  [YOUR LAPTOP TERMINAL]
+================================================================================
+
+WHY: Domino has no outbound internet access. PaddleOCR needs model files to
+     work. You download them ONCE on your laptop, then upload them to Domino.
+
+HOW TO OPEN YOUR LAPTOP TERMINAL:
+  - Windows : Press Win+R, type "cmd", press Enter
+              OR search "Command Prompt" in the Start menu
+  - Mac     : Press Cmd+Space, type "Terminal", press Enter
+  - Linux   : Press Ctrl+Alt+T
+
+COMMANDS TO RUN IN YOUR LAPTOP TERMINAL:
+------------------------------------------
+
+  1. Create a folder to store the models:
+
+       Windows:
+         mkdir C:\ocr_models
+
+       Mac/Linux:
+         mkdir -p ~/ocr_models
+
+  2. Download the detection model (shared by both engines, ~10 MB):
+
+       Windows (PowerShell):
+         Invoke-WebRequest -Uri "https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/Multilingual_PP-OCRv3_det_infer.tar" -OutFile "C:\ocr_models\det.tar"
+
+       Mac/Linux:
+         wget https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/Multilingual_PP-OCRv3_det_infer.tar -O ~/ocr_models/det.tar
+
+  3. Download the Arabic recognition model (~10 MB):
+
+       Windows (PowerShell):
+         Invoke-WebRequest -Uri "https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/arabic_PP-OCRv3_rec_infer.tar" -OutFile "C:\ocr_models\rec_ar.tar"
+
+       Mac/Linux:
+         wget https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/arabic_PP-OCRv3_rec_infer.tar -O ~/ocr_models/rec_ar.tar
+
+  4. Download the Latin recognition model — covers French AND English (~10 MB):
+
+       Windows (PowerShell):
+         Invoke-WebRequest -Uri "https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/latin_PP-OCRv3_rec_infer.tar" -OutFile "C:\ocr_models\rec_latin.tar"
+
+       Mac/Linux:
+         wget https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/latin_PP-OCRv3_rec_infer.tar -O ~/ocr_models/rec_latin.tar
+
+  5. Extract the model files:
+
+       Windows (PowerShell — run each line separately):
+         cd C:\ocr_models
+         tar -xf det.tar
+         tar -xf rec_ar.tar
+         tar -xf rec_latin.tar
+
+       Mac/Linux:
+         cd ~/ocr_models
+         tar -xf det.tar
+         tar -xf rec_ar.tar
+         tar -xf rec_latin.tar
+
+  6. After extraction you should have these 3 folders:
+
+       Multilingual_PP-OCRv3_det_infer/
+       arabic_PP-OCRv3_rec_infer/
+       latin_PP-OCRv3_rec_infer/
+
+       Verify with:
+         Windows: dir C:\ocr_models
+         Mac/Linux: ls ~/ocr_models
+
+
+================================================================================
+STEP 2 — UPLOAD MODELS AND IMAGES TO DOMINO  [DOMINO WEB BROWSER]
+================================================================================
+
+WHY: The models downloaded in Step 1 need to be on the Domino server so the
+     notebook can read them without any internet connection.
+
+HOW:
+  1. Open your Domino project in your web browser.
+
+  2. Go to:  Data  →  Domino Datasets  →  Create Dataset
+     Name it:  ocr_data
+     (or use an existing dataset if you have one)
+
+  3. Inside the dataset, create this folder structure:
+       ocr_data/
+         ocr_models/
+           Multilingual_PP-OCRv3_det_infer/    ← upload all files inside
+           arabic_PP-OCRv3_rec_infer/          ← upload all files inside
+           latin_PP-OCRv3_rec_infer/           ← upload all files inside
+         documents/                            ← upload your ID/passport images here
+
+  4. Upload the notebook file:
+       Go to your Domino Project  →  Files  →  Upload
+       Upload:  multilingual_doc_ocr.ipynb
+
+  NOTE: In Domino, datasets are mounted at /mnt/data/
+        So your models will be at:
+          /mnt/data/ocr_models/Multilingual_PP-OCRv3_det_infer/
+          /mnt/data/ocr_models/arabic_PP-OCRv3_rec_infer/
+          /mnt/data/ocr_models/latin_PP-OCRv3_rec_infer/
+        And your images will be at:
+          /mnt/data/documents/
+
+
+================================================================================
+STEP 3 — INSTALL PYTHON PACKAGES  [DOMINO TERMINAL]
+================================================================================
+
+WHY: The Python libraries need to be installed in the Domino environment.
+
+HOW TO OPEN THE DOMINO TERMINAL:
+  1. In your Domino project, click  "Launch Workspace"
+  2. Choose  JupyterLab  or  Jupyter Notebook
+  3. Once JupyterLab opens, go to:  File → New → Terminal
+     OR click the Terminal icon in the Launcher tab
+
+COMMANDS TO RUN IN THE DOMINO TERMINAL:
+------------------------------------------
+
+  pip install \
+    paddleocr==2.8.1 \
+    paddlepaddle==2.6.1 \
+    onnxruntime==1.19.0 \
+    omnimrz==0.1.6 \
+    opencv-python-headless==4.10.0.84 \
+    Pillow==10.4.0 \
+    numpy==1.26.4 \
+    pandas==2.2.2 \
+    openpyxl==3.1.5 \
+    tqdm==4.66.5
+
+  Wait for all packages to install (this may take 3-5 minutes).
+
+  Verify the install worked:
+    python -c "from paddleocr import PaddleOCR; print('OK')"
+
+  You should see:  OK
+
+
+================================================================================
+STEP 4 — OPEN AND RUN THE NOTEBOOK  [DOMINO TERMINAL / JUPYTERLAB]
+================================================================================
+
+HOW:
+  1. In JupyterLab, navigate to your project files in the left panel.
+  2. Double-click  multilingual_doc_ocr.ipynb  to open it.
+  3. Click  "Run All Cells"  from the Run menu.
+     OR press Shift+Enter to run each cell one at a time.
+
+WHAT TO EXPECT:
+  - Cell 1 (Imports)       : runs instantly
+  - Cell 2 (Config)        : prints config paths, runs instantly
+  - Cell 3 (Preprocessing) : defines a function, runs instantly
+  - Cell 4 (Engines)       : prints "Initialising..." — takes 10-30 seconds
+                             *** NO download happens — reads from disk ***
+  - Cell 5 (MRZ helpers)   : defines functions, runs instantly
+  - Cell 6 (Processor)     : defines functions, runs instantly
+  - Cell 7 (Sample image)  : processes one image as a test
+  - Cell 8 (Batch)         : processes all images in /mnt/data/documents/
+  - Cell 9 (JSON)          : saves results.json to /mnt/artifacts/
+  - Cell 10 (Excel)        : saves report.xlsx to /mnt/artifacts/
+  - Cell 11 (Preview)      : shows a summary table
+
+
+================================================================================
+STEP 5 — COLLECT YOUR OUTPUT FILES  [DOMINO WEB BROWSER]
+================================================================================
+
+HOW:
+  1. In your Domino project, go to:  Artifacts  (or Jobs → Artifacts)
+  2. Download:
+       results.json   — raw OCR text + structured MRZ data for every document
+       report.xlsx    — formatted Excel with 3 sheets:
+                          Sheet 1: Summary (one row per document)
+                          Sheet 2: MRZ Details (parsed passport fields)
+                          Sheet 3: Full Text (all OCR text)
+
+
+================================================================================
+FOLDER STRUCTURE SUMMARY
+================================================================================
+
+  YOUR LAPTOP (before upload):
+    C:\ocr_models\   or   ~/ocr_models/
+      Multilingual_PP-OCRv3_det_infer/
+      arabic_PP-OCRv3_rec_infer/
+      latin_PP-OCRv3_rec_infer/
+
+  DOMINO SERVER (after upload):
+    /mnt/data/
+      ocr_models/
+        Multilingual_PP-OCRv3_det_infer/
+        arabic_PP-OCRv3_rec_infer/
+        latin_PP-OCRv3_rec_infer/
+      documents/
+        your_image1.jpg
+        your_image2.png
+        ...
+    /mnt/artifacts/
+      results.json        ← created automatically when notebook runs
+      report.xlsx         ← created automatically when notebook runs
+
+
+================================================================================
+ERRORS AND FIXES APPLIED IN THE CODE
+================================================================================
+
+  ERROR 1: AssertionError: param lang must in dict_keys([...]), but got ar,fr,en
+  FIX    : PaddleOCR only accepts ONE language per instance.
+           The code uses TWO engines: lang='ar' (Arabic) + lang='fr' (French/English)
+           and merges the results.
+
+  ERROR 2: gaierror / ConnectionError — Failed to resolve 'paddleocr.bj.bcebos.com'
+  FIX    : Domino has no internet access. The code passes det_model_dir and
+           rec_model_dir explicitly so PaddleOCR reads from your uploaded
+           model folders and makes ZERO network calls.
+
+
+================================================================================
+SUPPORTED IMAGE FORMATS
+================================================================================
+
+  .jpg  .jpeg  .png  .bmp  .tiff  .tif  .webp
+
+
+================================================================================
+CONTACT / NOTES
+================================================================================
+
+  - Run Step 1 (download) only ONCE. Models stay on Domino permanently.
+  - Run Step 3 (pip install) once per Domino environment.
+  - Steps 4 and 5 are repeated every time you process new documents.
+  - To process new documents: upload images to /mnt/data/documents/ and
+    re-run the notebook from Cell 7 onwards (no need to reinitialise engines).
+
+================================================================================
