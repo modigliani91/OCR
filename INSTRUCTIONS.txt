@@ -1,141 +1,124 @@
 ================================================================================
   MULTILINGUAL OCR + MRZ PARSER — DOMINO DATA LAB
-  DEFINITIVE SETUP INSTRUCTIONS  (v4 — fixes offline model loading)
+  DEFINITIVE INSTRUCTIONS v5  (fixes the persistent ConnectionError)
 ================================================================================
 
-WHAT WENT WRONG IN THE LAST VERSION
---------------------------------------
-Even after passing det_model_dir and rec_model_dir to PaddleOCR, you kept
-getting:
+WHAT WENT WRONG IN ALL PREVIOUS VERSIONS
+------------------------------------------
+Every version so far tried to guess where PaddleOCR caches its models.
+We used Path.home() / '.paddleocr' / 'whl'
+But inside Domino's conda environment (DWS-CPU), Path.home() does NOT return
+the normal /home/user path — it returns something inside the conda environment.
+So our "cache" folder was always wrong, models were never found, and PaddleOCR
+kept trying to download them from the internet.
 
-  ConnectionError: Failed to resolve 'paddleocr.bj.bcebos.com'
-  Downloading ch_PP-OCRv4_det_infer.tar ...
+THE FIX IN v5
+--------------
+1. We import BASE_DIR DIRECTLY from PaddleOCR's own source code.
+   This gives us the exact path PaddleOCR will look in — no more guessing.
 
-WHY:
-  PaddleOCR was IGNORING our det_model_dir/rec_model_dir parameters and
-  falling back to its internal defaults (the Chinese PP-OCRv4 model).
-  This happens because PaddleOCR only respects those parameters when the
-  folders contain EXACTLY the files it expects AND when the lang parameter
-  matches the model.
+2. We monkey-patch requests.Session.send BEFORE creating any PaddleOCR engine.
+   If PaddleOCR still tries to download anything, it immediately shows a
+   clear diagnostic error instead of a confusing ConnectionError.
 
-THE REAL FIX:
-  Place the downloaded model files inside the EXACT folder structure that
-  PaddleOCR creates when it downloads models itself:
-
-    ~/.paddleocr/whl/det/multilingual/Multilingual_PP-OCRv3_det_infer/
-    ~/.paddleocr/whl/rec/arabic/arabic_PP-OCRv3_rec_infer/
-    ~/.paddleocr/whl/rec/latin/latin_PP-OCRv3_rec_infer/
-
-  When PaddleOCR sees models already in these folders, it skips downloading.
-  No internet connection needed. No special parameters needed.
+3. The notebook prints the exact cache path at runtime so you can verify.
 
 
 ================================================================================
-GLOSSARY — SO YOU KNOW EXACTLY WHICH TERMINAL WE MEAN
+WHICH TERMINAL IS WHICH — READ THIS FIRST
 ================================================================================
 
-  YOUR LAPTOP TERMINAL:
-    The black/white command window on YOUR computer (not Domino).
-    - Windows : Start menu → search "Command Prompt" → open it
-                OR press Windows key + R → type "cmd" → press Enter
-    - Mac     : Press Cmd + Space → type "Terminal" → press Enter
-    - Linux   : Press Ctrl + Alt + T
-    PURPOSE   : Download model files. Needs internet. Nothing else.
+YOUR LAPTOP TERMINAL (needs internet):
+  Windows : Start → search "Command Prompt" → open it
+            OR press Win+R → type cmd → Enter
+  Mac/Linux: press Cmd+Space → Terminal → Enter
+  USE FOR : downloading the model files only (Step 1)
 
-  DOMINO TERMINAL:
-    A terminal window INSIDE the Domino website, running on the server.
-    HOW TO OPEN:
-      1. Open your Domino project in the browser
-      2. Click "Launch Workspace" → choose JupyterLab
-      3. In JupyterLab: click File menu → New → Terminal
-         OR click the black Terminal icon in the Launcher tab
-    PURPOSE   : Run pip install, copy model files, run setup script.
+DOMINO TERMINAL (no internet, runs on the server):
+  1. Open your Domino project in the browser
+  2. Click "Launch Workspace" → select JupyterLab
+  3. Inside JupyterLab: File menu → New → Terminal
+     OR click the Terminal tile in the Launcher tab
+  USE FOR : pip install, copying files, verifying paths (Steps 3 and 4)
 
 
 ================================================================================
 STEP 1 — DOWNLOAD MODEL FILES  [YOUR LAPTOP TERMINAL]
 ================================================================================
 
-Open your laptop terminal and run these commands ONE BY ONE.
-(You need internet on your laptop for this step only.)
+Open your laptop terminal and run these commands.
+(Internet needed. Run on your laptop, NOT on Domino.)
 
--- Windows users (Command Prompt) --
+--- Windows (Command Prompt) ---
 
   mkdir C:\ocr_models
-
-  curl -L "https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/Multilingual_PP-OCRv3_det_infer.tar" -o C:\ocr_models\det.tar
-
-  curl -L "https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/arabic_PP-OCRv3_rec_infer.tar" -o C:\ocr_models\rec_ar.tar
-
-  curl -L "https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/latin_PP-OCRv3_rec_infer.tar" -o C:\ocr_models\rec_latin.tar
-
   cd C:\ocr_models
+
+  curl -L "https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/Multilingual_PP-OCRv3_det_infer.tar" -o det.tar
+  curl -L "https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/arabic_PP-OCRv3_rec_infer.tar" -o rec_ar.tar
+  curl -L "https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/latin_PP-OCRv3_rec_infer.tar" -o rec_latin.tar
+
   tar -xf det.tar
   tar -xf rec_ar.tar
   tar -xf rec_latin.tar
 
-  dir C:\ocr_models
+  dir
 
--- Mac / Linux users (Terminal) --
+--- Mac / Linux (Terminal) ---
 
-  mkdir -p ~/ocr_models
+  mkdir -p ~/ocr_models && cd ~/ocr_models
 
-  curl -L "https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/Multilingual_PP-OCRv3_det_infer.tar" -o ~/ocr_models/det.tar
+  curl -L "https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/Multilingual_PP-OCRv3_det_infer.tar" -o det.tar
+  curl -L "https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/arabic_PP-OCRv3_rec_infer.tar" -o rec_ar.tar
+  curl -L "https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/latin_PP-OCRv3_rec_infer.tar" -o rec_latin.tar
 
-  curl -L "https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/arabic_PP-OCRv3_rec_infer.tar" -o ~/ocr_models/rec_ar.tar
-
-  curl -L "https://paddleocr.bj.bcebos.com/PP-OCRv3/multilingual/latin_PP-OCRv3_rec_infer.tar" -o ~/ocr_models/rec_latin.tar
-
-  cd ~/ocr_models
   tar -xf det.tar && tar -xf rec_ar.tar && tar -xf rec_latin.tar
 
-  ls ~/ocr_models
+  ls
 
-After extraction you should see THREE folders:
+You should see THREE folders after extraction:
   Multilingual_PP-OCRv3_det_infer/
   arabic_PP-OCRv3_rec_infer/
   latin_PP-OCRv3_rec_infer/
 
+Each folder must contain these files:
+  inference.pdmodel
+  inference.pdiparams
+  inference.pdiparams.info
+
 
 ================================================================================
-STEP 2 — UPLOAD MODEL FILES TO DOMINO  [YOUR BROWSER]
+STEP 2 — UPLOAD TO DOMINO  [YOUR BROWSER]
 ================================================================================
 
-1. Go to your Domino project in the browser.
-2. Navigate to: Data → Domino Datasets → Create a new dataset called "ocr_data"
-   (skip creation if it already exists)
-3. Inside the dataset, create this EXACT folder structure and upload files:
+1. Open your Domino project in the browser
+2. Go to: Data → Domino Datasets → create a dataset called "ocr_data"
+   (skip if it already exists)
+3. Inside the dataset upload this EXACT structure:
 
    ocr_data/
      models/
-       Multilingual_PP-OCRv3_det_infer/     ← upload all files from this folder
+       Multilingual_PP-OCRv3_det_infer/
+         inference.pdmodel          ← upload this
+         inference.pdiparams        ← upload this
+         inference.pdiparams.info   ← upload this
+       arabic_PP-OCRv3_rec_infer/
          inference.pdmodel
          inference.pdiparams
          inference.pdiparams.info
-       arabic_PP-OCRv3_rec_infer/           ← upload all files from this folder
+       latin_PP-OCRv3_rec_infer/
          inference.pdmodel
          inference.pdiparams
          inference.pdiparams.info
-       latin_PP-OCRv3_rec_infer/            ← upload all files from this folder
-         inference.pdmodel
-         inference.pdiparams
-         inference.pdiparams.info
-     documents/                             ← upload your passport/ID images here
-       passport1.jpg
-       idcard2.png
-       ...
+     documents/
+       your_passport.jpg            ← upload your document images here
+       your_idcard.png
 
-4. Also upload your document images to: ocr_data/documents/
-
-After upload, Domino mounts datasets at /mnt/data/, so your paths will be:
-  /mnt/data/models/Multilingual_PP-OCRv3_det_infer/
-  /mnt/data/models/arabic_PP-OCRv3_rec_infer/
-  /mnt/data/models/latin_PP-OCRv3_rec_infer/
-  /mnt/data/documents/
+4. Upload multilingual_doc_ocr.ipynb to your Domino Project Files
 
 
 ================================================================================
-STEP 3 — INSTALL PYTHON PACKAGES  [DOMINO TERMINAL]
+STEP 3 — INSTALL PACKAGES  [DOMINO TERMINAL]
 ================================================================================
 
 Open the DOMINO terminal (JupyterLab → File → New → Terminal) and run:
@@ -152,149 +135,90 @@ Open the DOMINO terminal (JupyterLab → File → New → Terminal) and run:
     openpyxl==3.1.5 \
     tqdm==4.66.5
 
-Wait for it to finish (3-5 minutes). Then verify:
+Verify with:
+  python -c "from paddleocr import PaddleOCR; print('paddleocr OK')"
 
-  python -c "from paddleocr import PaddleOCR; print('OK')"
-
-You should see: OK
+You should see: paddleocr OK
 
 
 ================================================================================
-STEP 4 — COPY MODELS INTO PADDLEOCR'S CACHE  [DOMINO TERMINAL]
+STEP 4 — FIND THE CORRECT CACHE PATH  [DOMINO TERMINAL]
 ================================================================================
 
-THIS IS THE KEY STEP THAT WAS MISSING BEFORE.
+THIS IS THE CRITICAL STEP. Run this in the DOMINO terminal:
 
-PaddleOCR looks for models in: ~/.paddleocr/whl/
-We need to copy our uploaded models into that exact structure.
+  python -c "
+  from paddleocr.paddleocr import BASE_DIR
+  print('PaddleOCR BASE_DIR:', BASE_DIR)
+  "
 
-In the DOMINO terminal, run these commands ONE BY ONE:
+This prints the EXACT path where PaddleOCR looks for its models.
+Write it down — you will see it also printed when Cell 2 runs.
 
-  # Create the exact directory structure PaddleOCR expects
-  mkdir -p ~/.paddleocr/whl/det/multilingual
-  mkdir -p ~/.paddleocr/whl/rec/arabic
-  mkdir -p ~/.paddleocr/whl/rec/latin
+Then copy models into that exact structure:
 
-  # Copy detection model
+  # Replace BASE_DIR_HERE with the value printed above
+  # Example: if it printed /home/domino/.paddleocr, use that
+
+  mkdir -p BASE_DIR_HERE/whl/det/multilingual
+  mkdir -p BASE_DIR_HERE/whl/rec/arabic
+  mkdir -p BASE_DIR_HERE/whl/rec/latin
+
   cp -r /mnt/data/models/Multilingual_PP-OCRv3_det_infer \
-        ~/.paddleocr/whl/det/multilingual/
+        BASE_DIR_HERE/whl/det/multilingual/
 
-  # Copy Arabic recognition model
   cp -r /mnt/data/models/arabic_PP-OCRv3_rec_infer \
-        ~/.paddleocr/whl/rec/arabic/
+        BASE_DIR_HERE/whl/rec/arabic/
 
-  # Copy Latin recognition model (French + English)
   cp -r /mnt/data/models/latin_PP-OCRv3_rec_infer \
-        ~/.paddleocr/whl/rec/latin/
+        BASE_DIR_HERE/whl/rec/latin/
 
-  # Verify everything is in place
-  ls ~/.paddleocr/whl/det/multilingual/
-  ls ~/.paddleocr/whl/rec/arabic/
-  ls ~/.paddleocr/whl/rec/latin/
-
-Each ls command should show the model folder with inference.pdmodel inside.
+NOTE: The notebook (Cell 2) does this copying AUTOMATICALLY.
+      This manual step is only if you want to do it ahead of time.
 
 
 ================================================================================
-STEP 5 — UPLOAD AND OPEN THE NOTEBOOK  [DOMINO BROWSER + JUPYTERLAB]
+STEP 5 — RUN THE NOTEBOOK  [JUPYTERLAB]
 ================================================================================
 
-1. In the Domino browser: Project → Files → Upload
-   Upload: multilingual_doc_ocr.ipynb
-
-2. In JupyterLab: double-click multilingual_doc_ocr.ipynb to open it.
-
-3. Run cells ONE AT A TIME using Shift+Enter.
-   Watch the output of each cell before moving to the next.
-
-
-================================================================================
-STEP 6 — WHAT EACH NOTEBOOK CELL DOES
-================================================================================
-
-  Cell 1 — Imports           : loads Python libraries. Should take <5 seconds.
-  Cell 2 — Configuration     : sets paths, checks model folders exist.
-                               If you see "NOT FOUND" errors, re-do Step 4.
-  Cell 3 — Preprocessing     : defines image resize function. Instant.
-  Cell 4 — Build OCR Engines : creates Arabic + Latin engines from local cache.
-                               Takes 10-30 seconds. NO download happens.
-                               If you see ConnectionError here, Step 4 failed.
-  Cell 5 — MRZ helpers       : defines MRZ detection functions. Instant.
-  Cell 6 — Document processor: defines main processing function. Instant.
-  Cell 7 — Test one image    : processes a single image as a test.
-                               Edit SAMPLE_IMAGE path to one of your files.
-  Cell 8 — Batch processing  : processes ALL images in /mnt/data/documents/
-  Cell 9 — Save JSON         : writes /mnt/artifacts/results.json
-  Cell 10 — Save Excel       : writes /mnt/artifacts/report.xlsx
-  Cell 11 — Summary          : shows results table
+1. In JupyterLab, open multilingual_doc_ocr.ipynb
+2. Run cells ONE BY ONE with Shift+Enter
+3. Cell 2 will print:
+     PaddleOCR BASE_DIR: /actual/path/on/this/server
+   This confirms where models are being placed.
+4. Cell 4 will print:
+     ✓ Download blocker active
+     Initialising Arabic engine...
+     ✓ Arabic engine ready
+   NO "Downloading" message should appear.
+5. If you see a red "❌ PaddleOCR tried to download" error:
+   → Check Cell 2 output to see which model file is missing
+   → Re-upload that model folder to /mnt/data/models/
 
 
 ================================================================================
-STEP 7 — DOWNLOAD OUTPUT FILES  [DOMINO BROWSER]
+STEP 6 — COLLECT OUTPUT FILES  [DOMINO BROWSER]
 ================================================================================
 
-1. In Domino browser: go to your project → Jobs → Artifacts
-   OR: Domino → Files → look in /mnt/artifacts/
-
-2. Download:
-     results.json  — all OCR text and MRZ data per document
-     report.xlsx   — Excel with 3 sheets: Summary, MRZ Details, Full Text
+After Cell 11 completes:
+  Domino → your project → Jobs → Artifacts
+  Download: results.json and report.xlsx
 
 
 ================================================================================
-TROUBLESHOOTING
+ERRORS FIXED ACROSS ALL VERSIONS
 ================================================================================
 
-PROBLEM : Cell 4 still shows ConnectionError after Step 4
-FIX     : In Domino terminal, check the model files are really there:
-            ls -la ~/.paddleocr/whl/det/multilingual/Multilingual_PP-OCRv3_det_infer/
-          You should see inference.pdmodel and inference.pdiparams.
-          If the folder is empty, re-run the cp commands in Step 4.
+Version 1 error: lang='ar,fr,en' → AssertionError
+  Fix: Two engines — lang='ar' and lang='fr'
 
-PROBLEM : Cell 2 says "NOT FOUND" for model directories
-FIX     : The /mnt/data/models/ paths don't exist.
-          Re-do Step 2 (upload) and Step 4 (copy to cache).
+Version 2-3 error: ConnectionError downloading ch_PP-OCRv4_det_infer.tar
+  Cause: det_model_dir was being ignored by PaddleOCR
+  Fix: Copy models into PaddleOCR cache (det/multilingual, rec/arabic, rec/latin)
 
-PROBLEM : Images are not being found in Cell 8
-FIX     : Check INPUT_DIR in Cell 2 matches where you uploaded images.
-          In Domino terminal: ls /mnt/data/documents/
-
-PROBLEM : pip install fails in Step 3
-FIX     : Try installing one package at a time starting with paddlepaddle:
-            pip install paddlepaddle==2.6.1
-            pip install paddleocr==2.8.1
-
-
-================================================================================
-COMPLETE FOLDER STRUCTURE ON DOMINO AFTER ALL STEPS
-================================================================================
-
-  /mnt/data/
-    models/                                          (uploaded in Step 2)
-      Multilingual_PP-OCRv3_det_infer/
-      arabic_PP-OCRv3_rec_infer/
-      latin_PP-OCRv3_rec_infer/
-    documents/                                       (your images)
-
-  ~/.paddleocr/whl/                                  (copied in Step 4)
-    det/multilingual/Multilingual_PP-OCRv3_det_infer/
-    rec/arabic/arabic_PP-OCRv3_rec_infer/
-    rec/latin/latin_PP-OCRv3_rec_infer/
-
-  /mnt/artifacts/                                    (created when notebook runs)
-    results.json
-    report.xlsx
-
-
-================================================================================
-ERRORS FIXED IN THIS VERSION OF THE CODE
-================================================================================
-
-  ERROR 1: AssertionError — param lang must in dict_keys, but got ar,fr,en
-  FIX    : Two separate engines: lang='ar' and lang='fr'
-
-  ERROR 2: ConnectionError — paddleocr.bj.bcebos.com (det_model_dir ignored)
-  FIX    : Models copied into ~/.paddleocr/whl/ so PaddleOCR finds them
-           automatically without any network call. No det_model_dir needed.
+Version 4 error: Still ConnectionError — models went to wrong cache folder
+  Cause: Path.home() returns unexpected path inside Domino conda environment
+  Fix v5: Import BASE_DIR directly from paddleocr.paddleocr
+          + monkey-patch requests.Session.send to block any download attempt
 
 ================================================================================
